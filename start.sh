@@ -17,7 +17,13 @@ echo -e "\033[1;32mPostgreSQL is fully ready and accepting connections (took ${W
 
 nohup /usr/bin/supervisord -c /etc/supervisor/supervisord.conf &
 
-nohup uvicorn main:mcp_app --host 0.0.0.0 --port 8001 --proxy-headers --forwarded-allow-ips='*' &
+# AgentCore Observability: wrap uvicorn with the ADOT launcher, see docs/agents/observability.md
+OTEL_LAUNCHER=""
+if [ "$SQLBOT_OTEL_ENABLED" = "true" ]; then
+    OTEL_LAUNCHER="opentelemetry-instrument"
+fi
+
+nohup $OTEL_LAUNCHER uvicorn main:mcp_app --host 0.0.0.0 --port 8001 --proxy-headers --forwarded-allow-ips='*' &
 
 cd $APP_PATH
-uvicorn main:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips='*'
+$OTEL_LAUNCHER uvicorn main:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips='*'

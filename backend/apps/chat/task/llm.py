@@ -55,6 +55,7 @@ from common.core.config import settings
 from common.core.db import engine
 from common.core.deps import CurrentAssistant, CurrentUser
 from common.error import SingleMessageError, SQLBotDBError, ParseSQLResultError, SQLBotDBConnectionError
+from common.utils import agent_trace
 from common.utils.data_format import DataFormat
 from common.utils.locale import I18n, I18nHelper
 from common.utils.utils import SQLBotLogUtil, extract_nested_json, prepare_for_orjson
@@ -1280,6 +1281,7 @@ class LLMService:
         return True
 
     def save_error(self, session: Session, message: str):
+        agent_trace.record_error(message)
         return save_error_message(session=session, record_id=self.record.id, message=message)
 
     def save_sql_data(self, session: Session, data_obj: Dict[str, Any]):
@@ -1314,7 +1316,11 @@ class LLMService:
         """
         SQLBotLogUtil.info(f"Executing SQL on ds_id {self.ds.id}: {sql}")
         try:
-            return exec_sql(ds=self.ds, sql=sql, origin_column=False)
+            with agent_trace.tool_call('execute_sql', sql, **{'sqlbot.datasource.id': self.ds.id,
+                                                              'sqlbot.datasource.type': self.ds.type}) as span:
+                result = exec_sql(ds=self.ds, sql=sql, origin_column=False)
+                agent_trace.record_sql_result(span, sql, result)
+                return result
         except Exception as e:
             if isinstance(e, ParseSQLResultError):
                 raise e
@@ -1351,8 +1357,14 @@ class LLMService:
 
     def run_task_cache(self, in_chat: bool = True, stream: bool = True,
                        finish_step: ChatFinishStep = ChatFinishStep.GENERATE_CHART, return_img: bool = True):
-        for chunk in self.run_task(in_chat, stream, finish_step, return_img):
-            self.chunk_list.append(chunk)
+        with agent_trace.agent_turn(agent_trace.session_id_for_chat(self.chat_question.chat_id),
+                                    self.chat_question.question,
+                                    **{'sqlbot.workspace.id': self.current_user.oid,
+                                       'sqlbot.chat.id': self.chat_question.chat_id,
+                                       'sqlbot.chat.record_id': getattr(getattr(self, 'record', None), 'id', None)}):
+            for chunk in self.run_task(in_chat, stream, finish_step, return_img):
+                self.chunk_list.append(chunk)
+            agent_trace.record_sql(self.chat_question.sql)
 
     def run_task(self, in_chat: bool = True, stream: bool = True,
                  finish_step: ChatFinishStep = ChatFinishStep.GENERATE_CHART, return_img: bool = True):

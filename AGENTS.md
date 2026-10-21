@@ -45,6 +45,7 @@ SQLBot 让业务用户用自然语言提问，基于已配置的数据源生成�
 | 修改认证、授权、SQL 执行、上传/下载、嵌入协议或前端渲染安全 | `docs/agents/security.md` |
 | 修改 SQLModel 模型或 Alembic 迁移 | `docs/agents/migrations.md` |
 | 修改 Dockerfile、installer、GitHub Actions 或发布产物 | `docs/agents/packaging.md` |
+| 修改 AgentCore / OpenTelemetry 埋点、`agent_trace` 或可观测性环境变量 | `docs/agents/observability.md` |
 | 修改或调试闭源 xpack 代码、双仓库联动验证 | `docs/agents/xpack.md` |
 | 修改图表渲染服务、后端图表配置或图表字段/输出契约 | `g2-ssr/AGENTS.md` |
 | 领域边界仍不明确 | `docs/agents/domain-open-questions.md`；先查证，仅询问影响当前任务且无法确定的问题 |
