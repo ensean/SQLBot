@@ -113,6 +113,10 @@ def setup_logging():
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)  # 设置最低级别
     
+    # botocore 的 DEBUG 日志包含 SigV4 签名头（含临时凭证 x-amz-security-token），启用 OTel 导出时会走 boto 调用
+    for noisy_logger in ('botocore', 'urllib3'):
+        logging.getLogger(noisy_logger).setLevel(logging.INFO)
+
     # 添加控制台处理器
     root_logger.addHandler(console_handler)
     

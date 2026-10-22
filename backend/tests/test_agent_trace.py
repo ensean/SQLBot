@@ -177,5 +177,22 @@ class LLMServiceWiringTestCase(unittest.TestCase):
         self.assertIn("agent_trace.record_error(", self.methods["save_error"])
 
 
+class LoggingGuardTestCase(unittest.TestCase):
+    """botocore DEBUG logs carry SigV4 headers (temporary credentials) once the OTel exporters sign requests."""
+
+    def test_setup_logging_caps_botocore_and_urllib3(self):
+        tree = ast.parse(
+            (BACKEND_DIR / "common/utils/utils.py").read_text(encoding="utf-8")
+        )
+        func = next(
+            n
+            for n in tree.body
+            if isinstance(n, ast.FunctionDef) and n.name == "setup_logging"
+        )
+        source = ast.unparse(func)
+        self.assertIn("('botocore', 'urllib3')", source)
+        self.assertIn("logging.getLogger(noisy_logger).setLevel(logging.INFO)", source)
+
+
 if __name__ == "__main__":
     unittest.main()
